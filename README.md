@@ -1,6 +1,6 @@
-# LTTng OTel Traces Adaptor
+# OTel replayer
 
-Read all opentelemetry-c CTF traces and send them to an OTel collector using [OTLP for GRPC](https://opentelemetry.io/docs/reference/specification/protocol/exporter/).
+Reads all [opentelemetry-c](https://github.com/augustinsangam/opentelemetry-c) CTF traces and send them to an OTel collector using [OTLP for GRPC](https://opentelemetry.io/docs/reference/specification/protocol/exporter/).
 
 ## Architecture
 
