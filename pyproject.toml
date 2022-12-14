@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "otel-replayer"
+version = "0.1.0"
+description = "Read all opentelemetry-c CTF traces and send them to an OTel collector using OTLP for GRPC."
+license = "MIT"
+authors = [
+  "Eya-Tom Augustin SANGAM <eya-tom-augustin.sangam@polymtl.ca>",
+]
+maintainers = [
+  "Eya-Tom Augustin SANGAM <eya-tom-augustin.sangam@polymtl.ca>",
+]
+readme = "README.md"
+homepage = "https://github.com/augustinsangam/otel-replayer"
+repository = "https://github.com/augustinsangam/otel-replayer"
+documentation = "https://github.com/augustinsangam/otel-replayer"
+keywords = ["LTTng", "OpenTelemetry", "Traces", "Spans"]
+include = [
+  "/src",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+opentelemetry-exporter-otlp-proto-grpc = "^1.15.0"
+types-protobuf = "^4.21.0.2"
+tqdm = "^4.64.1"
+
+[tool.mypy]
+namespace_packages = true
+ignore_missing_imports = true
