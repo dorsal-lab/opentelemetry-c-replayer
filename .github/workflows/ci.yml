@@ -52,7 +52,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
       - name: Setup the collector and observability backends
-        run: docker-compose -f "docker-compose.yml" up -d --build
+        run: docker-compose -f "docker-compose.yaml" up -d --build
       
       - name: Move cache
         # Temp fix
@@ -72,4 +72,4 @@ jobs:
 
       - name: Stop containers
         if: always()
-        run: docker-compose -f "docker-compose.yml" down
+        run: docker-compose -f "docker-compose.yaml" down
