@@ -51,6 +51,9 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
+      - name: Setup the collector and observability backends
+        run: docker-compose -f "docker-compose.yml" up -d --build
+      
       - name: Move cache
         # Temp fix
         # https://github.com/docker/build-push-action/issues/252
@@ -59,8 +62,14 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-      # - name: Run examples
-      #   uses: addnab/docker-run-action@v3
-      #   with:
-      #     image: ${{ env.IMAGE_NAME }}:latest
-      #     run: ./run.sh 6 3
+      - name: Run on empty folder
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ env.IMAGE_NAME }}:latest
+          run: |
+            mkdir -p /tmp/ctf-traces
+            python3 src/replayer.py -i /tmp/ctf-traces -e http://localhost:4317
+
+      - name: Stop containers
+        if: always()
+        run: docker-compose -f "docker-compose.yml" down
