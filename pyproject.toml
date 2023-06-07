@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "otel-replayer"
+name = "opentelemetry-c-replayer"
 version = "0.1.0"
 description = "Read all opentelemetry-c CTF traces and send them to an OTel collector using OTLP for GRPC."
 license = "MIT"
@@ -10,9 +10,9 @@ maintainers = [
   "Eya-Tom Augustin SANGAM <eya-tom-augustin.sangam@polymtl.ca>",
 ]
 readme = "README.md"
-homepage = "https://github.com/augustinsangam/otel-replayer"
-repository = "https://github.com/augustinsangam/otel-replayer"
-documentation = "https://github.com/augustinsangam/otel-replayer"
+homepage = "https://github.com/dorsal-lab/opentelemetry-c-replayer"
+repository = "https://github.com/dorsal-lab/opentelemetry-c-replayer"
+documentation = "https://github.com/dorsal-lab/opentelemetry-c-replayer"
 keywords = ["LTTng", "OpenTelemetry", "Traces", "Spans"]
 include = [
   "/src",

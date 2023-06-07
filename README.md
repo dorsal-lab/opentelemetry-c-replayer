@@ -1,6 +1,6 @@
 # OTel replayer
 
-Reads all [opentelemetry-c](https://github.com/augustinsangam/opentelemetry-c) CTF traces and send them to an OTel collector using [OTLP for GRPC](https://opentelemetry.io/docs/reference/specification/protocol/exporter/).
+Reads all [opentelemetry-c](https://github.com/dorsal-lab/opentelemetry-c) CTF traces and send them to an OTel collector using [OTLP for GRPC](https://opentelemetry.io/docs/reference/specification/protocol/exporter/).
 
 ## Architecture
 
@@ -9,7 +9,7 @@ The picture below shows how components are connected. Arrows represent how data 
 
 ![Replayer Architecture](architecture.png)
 
-- First, you need to have userspace CTF traces generated using the [opentelemetry-c](https://github.com/augustinsangam/opentelemetry-c) project.
+- First, you need to have userspace CTF traces generated using the [opentelemetry-c](https://github.com/dorsal-lab/opentelemetry-c) project.
 - [replayer.py](src/replayer.py) can read traces directly from the CTF traces folder and send telemetry data to the OpenTelemetry collector.
 - The collector will automatically forward data to Jaeger, Zipkin and Prometheus observability backends.
 
@@ -31,8 +31,8 @@ After this :
 ### Run the replayer
 
 ```sh
-docker build -t otel-replayer .
-docker run -it --net=host -v /path/to/ctf/traces:/ctf-traces otel-replayer -i /ctf-traces -e http://localhost:4317
+docker build -t opentelemetry-c-replayer .
+docker run -it --net=host -v /path/to/ctf/traces:/ctf-traces opentelemetry-c-replayer -i /ctf-traces -e http://localhost:4317
 ```
 
 If you wish to run the replayer locally without using docker :
