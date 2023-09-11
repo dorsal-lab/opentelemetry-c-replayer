@@ -23,6 +23,7 @@ python = "^3.10"
 opentelemetry-exporter-otlp-proto-grpc = "^1.15.0"
 types-protobuf = "^4.21.0.2"
 tqdm = "^4.64.1"
+opentelemetry-semantic-conventions = "^0.39b0"
 
 [tool.mypy]
 namespace_packages = true

@@ -10,15 +10,17 @@ from pathlib import Path
 
 import bt2
 from google.protobuf.message import DecodeError
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans
+from opentelemetry.proto.logs.v1.logs_pb2 import ResourceLogs
 from opentelemetry.proto.metrics.v1.metrics_pb2 import ResourceMetrics
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans
+from opentelemetry.sdk._logs._internal.export import LogExportResult
+from opentelemetry.sdk.metrics.export import MetricExportResult
 from opentelemetry.sdk.trace.export import SpanExportResult
+from tqdm.auto import tqdm
+
+from otlp_log_exporter import OTLPLogExporter
 from otlp_metrics_exporter import OTLPMetricExporter
 from otlp_span_exporter import OTLPSpanExporter
-from tqdm.auto import tqdm
-from opentelemetry.sdk.metrics.export import (
-    MetricExportResult
-)
 
 
 def get_parser() -> ArgumentParser:
@@ -34,7 +36,10 @@ def get_parser() -> ArgumentParser:
             OTEL_EXPORTER_OTLP_METRICS_INSECURE, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE,
             OTEL_EXPORTER_OTLP_METRICS_TIMEOUT, OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE,  OTEL_EXPORTER_OTLP_TRACES_COMPRESSION,
             OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_EXPORTER_OTLP_TRACES_HEADERS, OTEL_EXPORTER_OTLP_TRACES_INSECURE,
-            OTEL_EXPORTER_OTLP_TRACES_TIMEOUT,
+            OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, OTEL_EXPORTER_OTLP_LOGS_CERTIFICATE, OTEL_EXPORTER_OTLP_LOGS_COMPRESSION,
+            OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, OTEL_EXPORTER_OTLP_LOGS_HEADERS,
+            OTEL_EXPORTER_OTLP_LOGS_INSECURE, OTEL_EXPORTER_OTLP_LOGS_TEMPORALITY_PREFERENCE,
+            OTEL_EXPORTER_OTLP_LOGS_TIMEOUT
             Description of all those environment variables are available here :
             https://opentelemetry.io/docs/reference/specification/protocol/exporter/#configuration-options
         """
@@ -45,12 +50,12 @@ def get_parser() -> ArgumentParser:
                         required=True,
                         type=Path,
                         dest='input_folder')
-    parser.add_argument('-e', '--otel-exporter-otlp-traces-endpoint',
+    parser.add_argument('-e', '--otel-exporter-otlp-endpoint',
                         action='store',
                         help='The OTel collector GRPC server endpoint. If set, we assume the endpoint is insecure',
                         required=False,
                         type=str,
-                        dest='otel_exporter_otlp_traces_endpoint')
+                        dest='otel_exporter_otlp_endpoint')
     return parser
 
 
@@ -67,14 +72,20 @@ if __name__ == "__main__":
 
     # Create the span exporter
     span_exporter = OTLPSpanExporter(
-        endpoint=args.otel_exporter_otlp_traces_endpoint,
-        insecure=True if args.otel_exporter_otlp_traces_endpoint else None
+        endpoint=args.otel_exporter_otlp_endpoint,
+        insecure=True if args.otel_exporter_otlp_endpoint else None
     )
 
     # Create the metrics exporter
-    metrics_exporter = OTLPMetricExporter(
-        endpoint=args.otel_exporter_otlp_traces_endpoint,
-        insecure=True if args.otel_exporter_otlp_traces_endpoint else None
+    metric_exporter = OTLPMetricExporter(
+        endpoint=args.otel_exporter_otlp_endpoint,
+        insecure=True if args.otel_exporter_otlp_endpoint else None
+    )
+
+    # Create the logs exporter
+    log_exporter = OTLPLogExporter(
+        endpoint=args.otel_exporter_otlp_endpoint,
+        insecure=True if args.otel_exporter_otlp_endpoint else None
     )
 
     ust_traces_folders = list(
@@ -117,8 +128,7 @@ if __name__ == "__main__":
                     continue
                 # TODO (augustinsangam): In future export spans in group
                 # Exporting spans one by one
-                result = span_exporter.export([resource_spans])
-                if result == SpanExportResult.SUCCESS:
+                if span_exporter.export([resource_spans]) == SpanExportResult.SUCCESS:
                     n_tel_data_exported += 1
                 else:
                     logging.error(
@@ -138,8 +148,7 @@ if __name__ == "__main__":
 
                 # TODO (augustinsangam): In future export metrics in group
                 # Exporting metrics one by one
-                result2 = metrics_exporter.export([resource_metrics])
-                if result2 == MetricExportResult.SUCCESS:
+                if metric_exporter.export([resource_metrics]) == MetricExportResult.SUCCESS:
                     n_tel_data_exported += 1
                 else:
                     logging.error(
@@ -147,8 +156,23 @@ if __name__ == "__main__":
                         resource_metrics.scope_metrics[0].metrics[0].name)
 
             elif ev.name == "opentelemetry:resource_logs":
-                # TODO (augustinsangam): Add supports for logs
-                pass
+                # Export resource logs
+                resource_logs_bytes = bytes(list(ev['resource_logs']))
+
+                resource_logs = ResourceLogs()
+                try:
+                    resource_logs.ParseFromString(resource_logs_bytes)
+                except DecodeError:
+                    logging.error("Unable to parse one %s event", ev.name)
+                    continue
+                # TODO (augustinsangam): In future export logs in group
+                # Exporting logs one by one
+                if log_exporter.export([resource_logs]) == LogExportResult.SUCCESS:
+                    n_tel_data_exported += 1
+                else:
+                    logging.error(
+                        "Unable to export trace id %s",
+                        resource_logs.scope_logs[0].log_records[0].trace_id)
 
     # Stop and cleanup progress bar
     pbar.close()

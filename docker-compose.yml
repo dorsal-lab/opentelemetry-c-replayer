@@ -1,0 +1,146 @@
+version: "3.5"
+services:
+  loki:
+    image: grafana/loki:main-30fff3c
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki.yml:/etc/loki/local-config.yml
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - backend
+  jaeger:
+    networks:
+      - backend
+    image: jaegertracing/all-in-one:1.46.0
+    restart: always
+    ports:
+      - "16686:16686"
+      - "14268"
+      - "14250"
+  otel-collector:
+    networks:
+      - backend
+    image: otel/opentelemetry-collector-contrib:0.80.0
+    volumes:
+      - ./config/otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml
+    command: --config /etc/otelcol/otel-collector-config.yml
+    ports:
+      - "4317:4317"
+    depends_on:
+      - jaeger
+#  # microsim are a bunch of microservices sending spans
+#  microsim:
+#    networks:
+#      - backend
+#    image: yurishkuro/microsim:0.2.0
+#    command: "-j http://otel-collector:14278/api/traces -d 24h -s 500ms"
+#    depends_on:
+#      - otel-collector
+  vmagent:
+    container_name: vmagent
+    image: victoriametrics/vmagent:v1.91.2
+    depends_on:
+      - victoriametrics
+    ports:
+      - "8429:8429"
+    volumes:
+      - vmagentdata:/vmagentdata
+      - ./config/prometheus-vm.yml:/etc/prometheus/prometheus-vm.yml
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus-vm.yml"
+      - "--remoteWrite.url=http://victoriametrics:8428/api/v1/write"
+    networks:
+      - backend
+    restart: always
+  victoriametrics:
+    container_name: victoriametrics
+    image: victoriametrics/victoria-metrics:v1.91.2
+    ports:
+      - "8428:8428"
+      - "8089:8089"
+      - "8089:8089/udp"
+      - "2003:2003"
+      - "2003:2003/udp"
+      - "4242:4242"
+    volumes:
+      - vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--graphiteListenAddr=:2003"
+      - "--opentsdbListenAddr=:4242"
+      - "--httpListenAddr=:8428"
+      - "--influxListenAddr=:8089"
+      - "--vmalert.proxyURL=http://vmalert:8880"
+    networks:
+      - backend
+    restart: always
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:9.2.7
+    depends_on:
+      - loki
+      - jaeger
+      - victoriametrics
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./config/provisioning:/etc/grafana/provisioning/
+      - ./config/dashboards/victoriametrics.json:/var/lib/grafana/dashboards/vm.json
+      - ./config/dashboards/vmagent.json:/var/lib/grafana/dashboards/vmagent.json
+      - ./config/dashboards/vmalert.json:/var/lib/grafana/dashboards/vmalert.json
+      # - ./config/dashboards/jaeger.json:/var/lib/grafana/dashboards/jaeger.json
+      # - ./config/dashboards/loki.json:/var/lib/grafana/dashboards/loki.json
+      # - ./config/dashboards/prometheus.json:/var/lib/grafana/dashboards/prometheus.json
+    networks:
+      - backend
+    restart: always
+  vmalert:
+    container_name: vmalert
+    image: victoriametrics/vmalert:v1.91.2
+    depends_on:
+      - victoriametrics
+      - alertmanager
+    ports:
+      - "8880:8880"
+    volumes:
+      - ./config/alerts/alerts.yml:/etc/alerts/alerts.yml
+      - ./config/alerts/alerts-health.yml:/etc/alerts/alerts-health.yml
+      - ./config/alerts/alerts-vmagent.yml:/etc/alerts/alerts-vmagent.yml
+      - ./config/alerts/alerts-vmalert.yml:/etc/alerts/alerts-vmalert.yml
+    command:
+      - "--datasource.url=http://victoriametrics:8428/"
+      - "--remoteRead.url=http://victoriametrics:8428/"
+      - "--remoteWrite.url=http://victoriametrics:8428/"
+      - "--notifier.url=http://alertmanager:9093/"
+      - "--rule=/etc/alerts/*.yml"
+      # display source of alerts in grafana
+      - "--external.url=http://127.0.0.1:3000" #grafana outside container
+      # when copypaste the line be aware of '$$' for escaping in '$expr'
+      - '--external.alert.source=explore?orgId=1&left={"datasource":"VictoriaMetrics","queries":[{"expr":{{$$expr|jsonEscape|queryEscape}},"refId":"A"}],"range":{"from":"now-1h","to":"now"}}'
+    networks:
+      - backend
+    restart: always
+  alertmanager:
+    container_name: alertmanager
+    image: prom/alertmanager:v0.25.0
+    volumes:
+      - ./config/alerts/alertmanager.yml:/config/alertmanager.yml
+    command:
+      - "--config.file=/config/alertmanager.yml"
+    ports:
+      - "9093:9093"
+    networks:
+      - backend
+    restart: always
+volumes:
+  vmagentdata: {}
+  vmdata: {}
+  grafanadata: {}
+networks:
+  backend:

@@ -7,13 +7,14 @@ Reads all [opentelemetry-c](https://github.com/dorsal-lab/opentelemetry-c) CTF t
 This repository provides configurations for an OpenTelemetry collector with Jaeger, Zipkin and Prometheus observability backends.
 The picture below shows how components are connected. Arrows represent how data flows.
 
-![Replayer Architecture](architecture.png)
+![Replayer Architecture](opentelemetry_c_replayer_architechture.drawio.png)
 
 - First, you need to have userspace CTF traces generated using the [opentelemetry-c](https://github.com/dorsal-lab/opentelemetry-c) project.
 - [replayer.py](src/replayer.py) can read traces directly from the CTF traces folder and send telemetry data to the OpenTelemetry collector.
-- The collector will automatically forward data to Jaeger, Zipkin and Prometheus observability backends.
+- The collector will automatically forward data to Jaeger, Loki and VictoriaMetrics observability backends.
+- Those three telemetry backends have been added as a data source in Grafana
 
-## Run the replayer
+## Setup and run the replayer
 
 ### Setup the collector and observability backends
 
@@ -25,8 +26,8 @@ After this :
 
 - OpenTelemetry collector GRPC receiver will be available on port 4317.
 - Jaeger UI will be available at [http://localhost:16686](http://localhost:16686)
-- Zipkin UI will be available at [http://localhost:9411](http://localhost:9411)
-- Prometheus UI will be available at [http://localhost:9090](http://localhost:9090)
+- VictoriaMetrics UI will be available at [http://localhost:8428/vmui](http://localhost:8428/vmui)
+- Grafana and Grafana Loki will be available at [http://localhost:3000/](http://localhost:3000/).
 
 ### Run the replayer
 
